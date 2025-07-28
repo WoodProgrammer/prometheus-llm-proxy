@@ -1,9 +1,42 @@
 import re
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 import httpx
 import uvicorn
+from starlette.types import ASGIApp, Receive, Scope, Send
+from fastapi.middleware.gzip import GZipMiddleware
+
+class CapitalizeHeadersMiddleware:
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                headers = []
+                for name, value in message["headers"]:
+                    # Capitalize headers:
+                    #   'x-cat-dog' -> 'x-Cat-Dog'
+                    decoded_name = name.decode("latin1")
+                    capitalized = "-".join(
+                        part.capitalize() for part in decoded_name.split("-")
+                    )
+                    headers.append((capitalized.encode("latin1"), value))
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
 
 app = FastAPI()
+app.add_middleware(CapitalizeHeadersMiddleware)
+#app.add_middleware(GZipMiddleware)
 PROMETHEUS_URL = "http://localhost:9090"
 
 
@@ -21,62 +54,72 @@ def extract_promql(text: str) -> str:
     return text.strip()
 
 
-@app.api_route("/api/v1/labels", methods=["GET", "POST"])
-async def catch_all_prometheus_api(request: Request, path: str):
+@app.get("/api/v1/label/__name__/values")
+async def passthrough_label_values(request: Request):
+    params = dict(request.query_params)
+    url = f"{PROMETHEUS_URL}/api/v1/label/__name__/values"
+
     async with httpx.AsyncClient() as client:
-        # Orijinal istek bilgileri
-        method = request.method
-        headers = dict(request.headers)
-        body = await request.body()
-        params = dict(request.query_params)
+        prom_response = await client.get(url, params=params)
 
-        # Prometheus'a yönlendir
-        upstream = f"{PROMETHEUS_URL}/api/v1/{path}"
-        resp = await client.request(
-            method=method,
-            url=upstream,
-            headers=headers,
-            params=params,
-            content=body
-        )
+    return JSONResponse(
+        status_code=prom_response.status_code,
+        content=prom_response.json()
+    )
 
-        # JSON döndür
-        try:
-            return resp.json()
-        except Exception:
-            return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type"))
-        
+@app.get("/api/v1/labels")
+async def passthrough_label_values(request: Request):
+    params = dict(request.query_params)
+    url = f"{PROMETHEUS_URL}/api/v1/labels"
+
+    async with httpx.AsyncClient() as client:
+        prom_response = await client.get(url, params=params)
+
+    return JSONResponse(
+        status_code=prom_response.status_code,
+        content=prom_response.json()
+    )
+
+@app.get("/api/v1/label/que/values")
+async def que_values(request: Request):
+    params = dict(request.query_params)
+    url = f"{PROMETHEUS_URL}/api/v1/label/que/values"
+
+    async with httpx.AsyncClient() as client:
+        prom_response = await client.get(url, params=params)
+
+    return JSONResponse(
+        status_code=prom_response.status_code,
+        content=prom_response.json()
+    )
+
 
 @app.api_route("/api/v1/query_range", methods=["GET", "POST"])
 async def intercept_query(request: Request):
-    query = ""
-    if request.method == "GET":
-        query = request.query_params.get("query", "")
-    elif request.method == "POST":
-        content_type = request.headers.get("content-type", "")
-        if "application/x-www-form-urlencoded" in content_type:
-            body = await request.body()
-            from urllib.parse import parse_qs
-            parsed = parse_qs(body.decode())
-            query = parsed.get("query", [""])[0]
-    
-    print("The query is ", query)
-    params = dict(request.query_params)
+    async with httpx.AsyncClient() as client:
 
-    if "llm_dashboard_metric" in query:
-        match = re.search(r'llm_dashboard_metric\{query="([^"]+)"\}', query)
-        print("The match result is ", match)
-        if match:
-            natural_query = match.group(1)
-            print("🔥 Intercepted natural query:", natural_query)
+        # Prometheus’a gerçek query’yi gönder
+        headers = {"Accept-Encoding": "gzip"}  
+        prom_response = await client.get(
+            f"http://localhost:9090/api/v1/query?query=up",
+            headers=headers,
+            follow_redirects=True,
+        )
 
-            # LLM'e gönder
-            async with httpx.AsyncClient() as client:
+        camel_case_headers = {
+            "Content-Type": prom_response.headers.get("content-type"),
+        }
 
-                prom_response = await client.get(
-                    f"http://localhost:9090/api/v1/query?query=up"
-                )
-                return prom_response.json()
+        # Eğer sıkıştırma yaptıysa ekle
+        if "content-encoding" in prom_response.headers:
+            camel_case_headers["Content-Encoding"] = prom_response.headers["content-encoding"]
 
+        camel_case_headers["Vary"] = "Origin"
+
+        return Response(
+            content=prom_response.content,
+            status_code=prom_response.status_code,
+            headers=camel_case_headers
+        )
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, proxy_headers=True)
