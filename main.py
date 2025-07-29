@@ -1,10 +1,12 @@
 import re
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 import httpx
 import uvicorn
 from starlette.types import ASGIApp, Receive, Scope, Send
 from fastapi.middleware.gzip import GZipMiddleware
+import json
+from io import BytesIO
 
 class CapitalizeHeadersMiddleware:
 
@@ -97,29 +99,35 @@ async def que_values(request: Request):
 @app.api_route("/api/v1/query_range", methods=["GET", "POST"])
 async def intercept_query(request: Request):
     async with httpx.AsyncClient() as client:
-
         # Prometheus’a gerçek query’yi gönder
-        headers = {"Accept-Encoding": "gzip"}  
+        #headers = {"Accept-Encoding": "gzip"}  
         prom_response = await client.get(
-            f"http://localhost:9090/api/v1/query?query=up",
-            headers=headers,
-            follow_redirects=True,
+            "http://localhost:9090/api/v1/query?query=up"
+            #headers=headers,
+            #follow_redirects=True,
         )
 
-        camel_case_headers = {
-            "Content-Type": prom_response.headers.get("content-type"),
+        print("The header is ", prom_response.headers)
+        headers = dict(prom_response.headers)
+        headers["Content-Length"] = str(len(prom_response.content))
+        headers["Content-Type"]="text/plain"
+        EXCLUDED_HEADERS = {"content-length", "transfer-encoding", "connection"}
+
+        safe_headers = {
+            k: v
+            for k, v in prom_response.headers.items()
+            if k.lower() not in EXCLUDED_HEADERS
         }
 
-        # Eğer sıkıştırma yaptıysa ekle
-        if "content-encoding" in prom_response.headers:
-            camel_case_headers["Content-Encoding"] = prom_response.headers["content-encoding"]
-
-        camel_case_headers["Vary"] = "Origin"
 
         return Response(
-            content=prom_response.content,
+            content=prom_response.read(),
             status_code=prom_response.status_code,
-            headers=camel_case_headers
+            headers=safe_headers,
         )
+
+    gzip.compress(data)
+    
+    #JSONResponse(content=prom_response.json())
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, proxy_headers=True)
