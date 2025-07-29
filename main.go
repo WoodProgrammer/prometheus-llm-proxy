@@ -3,12 +3,22 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 
 	cmd "github.com/WoodProgrammer/prometheus-llm-proxy/cmd"
+	"github.com/rs/zerolog/log"
 )
+
+func ParseQuery(query string) string {
+	re := regexp.MustCompile(`llm_dashboard_metric\{query="([^"]+)"\}`)
+	match := re.FindStringSubmatch(query)
+	if len(match) == 0 {
+		return ""
+	}
+	return match[1]
+}
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -17,17 +27,20 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	queryParams := parsedURL.Query()
+	requestHandler := cmd.RequestHandler{}
+	query := ParseQuery(queryParams.Get("query"))
 
-	query := parseQuery(queryParams.Get("query"))
+	result, err := requestHandler.LLMConverter(query)
 
-	main_result := cmd.LLMConverter(query)
-
+	if err != nil {
+		log.Err(err).Msg("Error while calling LLM source")
+	}
 	url := fmt.Sprintf(
-		"http://localhost:9090/api/v1/query_range?query=%s&start=%s&end=%s&step=15", main_result,
+		"http://localhost:9090/api/v1/query_range?query=%s&start=%s&end=%s&step=15", result,
 		queryParams.Get("start"), queryParams.Get("end"),
 	)
 
-	metrics, err := fetchMetrics(url)
+	metrics, err := requestHandler.FetchMetrics(url)
 	if err != nil {
 		http.Error(w, "Failed to fetch metrics", http.StatusInternalServerError)
 		return
@@ -78,8 +91,8 @@ func main() {
 	http.HandleFunc("/api/v1/labels", prometheusProxyHandler)
 	http.HandleFunc("/api/v1/label/que/values", prometheusProxyHandler)
 
-	log.Println("Starting server on :8080")
+	log.Info().Msg("Starting server on :8080")
 	if err := http.ListenAndServe(":8000", nil); err != nil {
-		log.Fatalf("Error starting server: %v", err)
+		log.Err(err).Msg("Error starting server:")
 	}
 }
