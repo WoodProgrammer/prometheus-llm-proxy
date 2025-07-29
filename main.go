@@ -6,20 +6,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"regexp"
+
+	cmd "github.com/WoodProgrammer/prometheus-llm-proxy/cmd"
 )
-
-func parseQuery(query string) string {
-	re := regexp.MustCompile(`llm_dashboard_metric\{query="([^"]+)"\}`)
-
-	match := re.FindStringSubmatch(query)
-	if len(match) > 1 {
-		fmt.Println("Captured query:", match[1])
-	} else {
-		fmt.Println("No match found.")
-	}
-	return match[1]
-}
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -31,7 +20,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := parseQuery(queryParams.Get("query"))
 
-	main_result := LLMConverter(query)
+	main_result := cmd.LLMConverter(query)
 
 	url := fmt.Sprintf(
 		"http://localhost:9090/api/v1/query_range?query=%s&start=%s&end=%s&step=15", main_result,
@@ -63,7 +52,6 @@ func prometheusProxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Orijinal başlıkları kopyala
 	req.Header = r.Header.Clone()
 
 	client := &http.Client{}
@@ -74,7 +62,6 @@ func prometheusProxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	// Yanıt başlıklarını kopyala
 	for k, v := range resp.Header {
 		for _, vv := range v {
 			w.Header().Add(k, vv)
@@ -82,7 +69,6 @@ func prometheusProxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(resp.StatusCode)
 
-	// Yanıt içeriğini aktar
 	io.Copy(w, resp.Body)
 }
 
