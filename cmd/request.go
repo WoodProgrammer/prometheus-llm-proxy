@@ -19,6 +19,10 @@ type Request interface {
 type RequestHandler struct {
 }
 
+var response struct {
+	Response string `json:"response"`
+}
+
 func (p *RequestHandler) FetchMetrics(url string) ([]byte, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -38,13 +42,15 @@ func (p *RequestHandler) FetchMetrics(url string) ([]byte, error) {
 	return body, nil
 }
 
-func (p *RequestHandler) LLMConverter(naturalQuery string) (string, error) {
+func (p *RequestHandler) LLMConverter(naturalQuery string, llmEndpoint string) (string, error) {
 
-	payload := map[string]interface{}{
-		"prompt": fmt.Sprintf(`
+	prompt := fmt.Sprintf(`
 Generate promql for this content: '%s' please only return the query
 Only return the query. No explanation, no markdown, no quotes.
-`, naturalQuery),
+`, naturalQuery)
+
+	payload := map[string]interface{}{
+		"prompt": prompt,
 		"stream": false,
 		"model":  "mistral",
 	}
@@ -55,7 +61,7 @@ Only return the query. No explanation, no markdown, no quotes.
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("POST", "http://localhost:11434/api/generate", bytes.NewBuffer(payloadBytes))
+	req, err := http.NewRequest("POST", llmEndpoint, bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		return "", err
 	}
@@ -72,9 +78,6 @@ Only return the query. No explanation, no markdown, no quotes.
 		return "", err
 	}
 
-	var response struct {
-		Response string `json:"response"`
-	}
 	if err := json.Unmarshal(bodyBytes, &response); err != nil {
 		return "", err
 	}
