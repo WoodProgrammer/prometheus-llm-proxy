@@ -40,7 +40,7 @@ func (q *QueryValidationHandler) SetQueries(prompt, output, hash string, status 
 	query := QueryValidation{
 		Prompt: prompt,
 		Output: output,
-		Status: false,
+		Status: status,
 	}
 
 	q.QueryValidationMap[hash] = query

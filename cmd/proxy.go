@@ -36,7 +36,6 @@ func (p *ProxyHandler) GetAllQueries(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(p.DBHandler.GetAllQueries())
-
 }
 
 func (p *ProxyHandler) MetricsHandler(w http.ResponseWriter, r *http.Request) {
@@ -51,15 +50,19 @@ func (p *ProxyHandler) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	_hash := db.GenerateHash(query)
 	val, ok := p.DBHandler.QueryValidationMap[_hash]
-	if !ok || val.Status {
+	if !ok || !val.Status {
 		queryForPrometheus, err = requestHandler.LLMConverter(query, p.LLMEndpoint)
 		if err != nil {
 			log.Err(err).Msg("Error while calling LLM source")
 		}
+		log.Debug().Msgf("LLM Call required!")
 		p.DBHandler.SetQueries(query, queryForPrometheus, _hash, false)
 
 	} else {
 		queryForPrometheus = val.Output
+		log.Debug().Msgf("There is no LLM call need prompt hash is matching")
+		log.Debug().Msgf("The running prompt is %s", val.Prompt)
+		log.Debug().Msgf("The running query is %s", queryForPrometheus)
 	}
 
 	url := fmt.Sprintf(
