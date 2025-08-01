@@ -51,7 +51,7 @@ func (p *ProxyHandler) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	_hash := db.GenerateHash(query)
 	val, ok := p.DBHandler.QueryValidationMap[_hash]
-	if !ok {
+	if !ok || val.Status {
 		queryForPrometheus, err = requestHandler.LLMConverter(query, p.LLMEndpoint)
 		if err != nil {
 			log.Err(err).Msg("Error while calling LLM source")
