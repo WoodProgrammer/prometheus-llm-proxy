@@ -5,10 +5,14 @@ import (
 	"os"
 
 	cmd "github.com/WoodProgrammer/prometheus-llm-proxy/cmd"
+	db "github.com/WoodProgrammer/prometheus-llm-proxy/db"
+
 	"github.com/rs/zerolog/log"
 )
 
 func NewProxyHandler() *cmd.ProxyHandler {
+
+	_query_map := map[string]db.QueryValidation{}
 	promUrl := os.Getenv("PROMETHEUS_URL")
 	if len(promUrl) == 0 {
 		panic("Please set prometheus url as environment variable")
@@ -20,6 +24,9 @@ func NewProxyHandler() *cmd.ProxyHandler {
 	return &cmd.ProxyHandler{
 		PromBaseUrl: promUrl,
 		LLMEndpoint: llmEndpoint,
+		DBHandler: db.QueryValidationHandler{
+			QueryValidationMap: _query_map,
+		},
 	}
 }
 func main() {
@@ -29,6 +36,9 @@ func main() {
 	http.HandleFunc("/api/v1/label/__name__/values", proxy.PrometheusProxyHandler)
 	http.HandleFunc("/api/v1/labels", proxy.PrometheusProxyHandler)
 	http.HandleFunc("/api/v1/label/que/values", proxy.PrometheusProxyHandler)
+
+	http.HandleFunc("/api/v1/validate_query", proxy.PrometheusProxyHandler)
+	http.HandleFunc("/api/v1/get_all_queries", proxy.GetAllQueries)
 
 	log.Info().Msg("Starting server on :8080")
 	if err := http.ListenAndServe(":8000", nil); err != nil {
