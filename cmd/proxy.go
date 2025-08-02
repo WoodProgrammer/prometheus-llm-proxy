@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"time"
 
 	"github.com/WoodProgrammer/prometheus-llm-proxy/db"
 	"github.com/rs/zerolog/log"
@@ -22,6 +23,7 @@ type ProxyHandler struct {
 	PromBaseUrl string
 	LLMEndpoint string
 	DBHandler   db.QueryValidationHandler
+	Requester   RequestHandler
 }
 
 func ParseQuery(query string) string {
@@ -75,13 +77,20 @@ func (p *ProxyHandler) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	queryParams := parsedURL.Query()
-	requestHandler := RequestHandler{}
 	query := ParseQuery(queryParams.Get("query"))
 
 	_hash := db.GenerateHash(query)
 	val, ok := p.DBHandler.QueryValidationMap[_hash]
 	if !ok || !val.Status {
-		queryForPrometheus, err = requestHandler.LLMConverter(query, p.LLMEndpoint)
+
+		if time.Since(p.Requester.LastPrometheusCall) >= 1*time.Minute || len(p.Requester.PrometheusAvailableMetrics.Data) == 0 {
+			log.Info().Msgf("Cagir abi %s", p.Requester.LastPrometheusCall)
+			p.Requester.FetchAvailableMetrics(p.PromBaseUrl)
+		} else {
+			log.Info().Msgf("The recent prometheus call has been in %s", p.Requester.LastPrometheusCall)
+		}
+
+		queryForPrometheus, err = p.Requester.LLMConverter(query, p.LLMEndpoint)
 		if err != nil {
 			log.Err(err).Msg("Error while calling LLM source")
 		}
@@ -100,7 +109,7 @@ func (p *ProxyHandler) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 		queryParams.Get("start"), queryParams.Get("end"),
 	)
 
-	metrics, err := requestHandler.FetchMetrics(url)
+	metrics, err := p.Requester.FetchMetrics(url)
 	if err != nil {
 		http.Error(w, "Failed to fetch metrics", http.StatusInternalServerError)
 		return

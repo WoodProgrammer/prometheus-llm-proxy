@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,6 +19,8 @@ type Request interface {
 }
 
 type RequestHandler struct {
+	PrometheusAvailableMetrics PrometheusAvailableMetricReponse
+	LastPrometheusCall         time.Time
 }
 
 var response struct {
@@ -27,6 +30,12 @@ var response struct {
 type QueryValidationRequest struct {
 	Hash   string `json:"hash"`
 	Status bool   `json:"status"`
+}
+
+type PrometheusAvailableMetricReponse struct {
+	Status string   `json:"status"`
+	Data   []string `json:"data"`
+	Error  string   `json:"error"`
 }
 
 func (p *RequestHandler) FetchMetrics(url string) ([]byte, error) {
@@ -48,6 +57,41 @@ func (p *RequestHandler) FetchMetrics(url string) ([]byte, error) {
 	return body, nil
 }
 
+func (p *RequestHandler) FetchAvailableMetrics(prometheusAddress string) ([]string, error) {
+	req, err := http.NewRequest(http.MethodGet, prometheusAddress+"/api/v1/label/__name__/values", nil)
+	if err != nil {
+		return nil, err
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	req.Header.Set("Accept", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// 304 => değişiklik yok
+	if resp.StatusCode == http.StatusNotModified {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		err := errors.New(fmt.Sprintf("Error while fetching available metrics status code is %s", resp.StatusCode))
+		return nil, err
+	}
+
+	payload := p.PrometheusAvailableMetrics
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, err
+	}
+	if payload.Status != "success" {
+		return nil, errors.New("prometheus api error: " + payload.Error)
+	}
+
+	p.LastPrometheusCall = time.Now()
+	p.PrometheusAvailableMetrics = payload
+	return payload.Data, nil
+}
+
 func (p *RequestHandler) LLMConverter(naturalQuery string, llmEndpoint string) (string, error) {
 	var req *http.Request
 	var isOpenAI bool
@@ -55,8 +99,19 @@ func (p *RequestHandler) LLMConverter(naturalQuery string, llmEndpoint string) (
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	prompt := fmt.Sprintf(`
-Generate promql for this content: '%s' please only return the query
-Only return the query. No explanation, no markdown, no quotes.
+Generate a single valid PromQL expression from the request below:
+
+REQUEST: %s
+
+Rules:
+- Return only the query on one line. No explanation, markdown, quotes, code fences, or comments.
+- Use only these functions when appropriate: rate(), irate(), avg_over_time().
+- If the request specifies a time window, use it; otherwise default to [5m] for range vectors.
+- Keep metric and label names exactly as given; do not invent metrics or labels.
+- Preserve label filters from the request; add by()/without() only if explicitly requested.
+- Use rate() for trends over time, irate() for instantaneous/current rate, avg_over_time() for period averages.
+- Use offset only if explicitly requested; do not rewrite units.
+- If ambiguous, choose the simplest reasonable query.
 `, naturalQuery)
 
 	openAIAPIKey := os.Getenv("OPENAI_API_KEY")
