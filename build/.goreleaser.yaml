@@ -1,0 +1,11 @@
+builds:
+  - main: ./
+    binary: ./bin/postgresql-connection-manager
+    flags:
+      - -trimpath
+    env:
+      - CGO_ENABLED=0
+      - GO111MODULE=auto
+    targets:
+      - linux_amd64
+      - linux_arm64
