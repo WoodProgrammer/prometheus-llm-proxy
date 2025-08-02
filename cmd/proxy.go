@@ -48,7 +48,12 @@ func (p *ProxyHandler) ValidateQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := p.DBHandler.QueryValidationMap[req.Hash]
+	query, ok := p.DBHandler.QueryValidationMap[req.Hash]
+
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
 	query.Status = req.Status
 	p.DBHandler.QueryValidationMap[req.Hash] = query
 
