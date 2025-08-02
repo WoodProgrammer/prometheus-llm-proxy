@@ -37,7 +37,7 @@ func main() {
 	http.HandleFunc("/api/v1/labels", proxy.PrometheusProxyHandler)
 	http.HandleFunc("/api/v1/label/que/values", proxy.PrometheusProxyHandler)
 
-	http.HandleFunc("/api/v1/validate_query", proxy.PrometheusProxyHandler)
+	http.HandleFunc("/api/v1/validate_query", proxy.ValidateQuery)
 	http.HandleFunc("/api/v1/get_all_queries", proxy.GetAllQueries)
 
 	log.Info().Msg("Starting server on :8080")

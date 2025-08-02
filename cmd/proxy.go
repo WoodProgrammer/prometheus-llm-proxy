@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -30,6 +31,30 @@ func ParseQuery(query string) string {
 		return ""
 	}
 	return match[1]
+}
+
+func (p *ProxyHandler) ValidateQuery(w http.ResponseWriter, r *http.Request) {
+	req := QueryValidationRequest{}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Err(err).Msg("Error while reading body")
+	}
+
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		log.Err(err).Msg("Error while json.Unmarshal() call")
+		http.Error(w, "Error while json.Unmarshal() call", http.StatusInternalServerError)
+		return
+	}
+
+	query := p.DBHandler.QueryValidationMap[req.Hash]
+	query.Status = req.Status
+	p.DBHandler.QueryValidationMap[req.Hash] = query
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte("OK"))
+
 }
 
 func (p *ProxyHandler) GetAllQueries(w http.ResponseWriter, r *http.Request) {

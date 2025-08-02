@@ -23,6 +23,11 @@ var response struct {
 	Response string `json:"response"`
 }
 
+type QueryValidationRequest struct {
+	Hash   string `json:"hash"`
+	Status bool   `json:"status"`
+}
+
 func (p *RequestHandler) FetchMetrics(url string) ([]byte, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
