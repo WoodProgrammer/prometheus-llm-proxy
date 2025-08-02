@@ -99,8 +99,19 @@ func (p *RequestHandler) LLMConverter(naturalQuery string, llmEndpoint string) (
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	prompt := fmt.Sprintf(`
-Generate promql for this content: '%s' please only return the query
-Only return the query. No explanation, no markdown, no quotes.
+Generate a single valid PromQL expression from the request below:
+
+REQUEST: %s
+
+Rules:
+- Return only the query on one line. No explanation, markdown, quotes, code fences, or comments.
+- Use only these functions when appropriate: rate(), irate(), avg_over_time().
+- If the request specifies a time window, use it; otherwise default to [5m] for range vectors.
+- Keep metric and label names exactly as given; do not invent metrics or labels.
+- Preserve label filters from the request; add by()/without() only if explicitly requested.
+- Use rate() for trends over time, irate() for instantaneous/current rate, avg_over_time() for period averages.
+- Use offset only if explicitly requested; do not rewrite units.
+- If ambiguous, choose the simplest reasonable query.
 `, naturalQuery)
 
 	openAIAPIKey := os.Getenv("OPENAI_API_KEY")
