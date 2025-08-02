@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -48,28 +49,60 @@ func (p *RequestHandler) FetchMetrics(url string) ([]byte, error) {
 }
 
 func (p *RequestHandler) LLMConverter(naturalQuery string, llmEndpoint string) (string, error) {
+	var req *http.Request
+	var isOpenAI bool
+	var openAIAPIModel string
+	client := &http.Client{Timeout: 10 * time.Second}
 
 	prompt := fmt.Sprintf(`
 Generate promql for this content: '%s' please only return the query
 Only return the query. No explanation, no markdown, no quotes.
 `, naturalQuery)
 
-	payload := map[string]interface{}{
-		"prompt": prompt,
-		"stream": false,
-		"model":  "mistral",
+	openAIAPIKey := os.Getenv("OPENAI_API_KEY")
+	if len(openAIAPIKey) == 0 {
+		isOpenAI = false
 	}
 
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
+	openAIAPIModel = os.Getenv("OPENAI_MODEL")
+	if len(openAIAPIModel) == 0 {
+		openAIAPIModel = "gpt-4o-mini"
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("POST", llmEndpoint, bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		return "", err
+	if !isOpenAI {
+		payload := map[string]interface{}{
+			"prompt": prompt,
+			"stream": false,
+			"model":  "mistral",
+		}
+
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			return "", err
+		}
+		req, err = http.NewRequest("POST", llmEndpoint, bytes.NewBuffer(payloadBytes))
+		if err != nil {
+			return "", err
+		}
+	} else {
+
+		payload := map[string]interface{}{
+			"input": prompt,
+			"model": openAIAPIModel,
+		}
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			return "", err
+		}
+
+		req, err = http.NewRequest("POST", llmEndpoint, bytes.NewBuffer(payloadBytes))
+		req.Header.Set("Authorization", "Bearer "+openAIAPIKey)
+		req.Header.Set("Content-Type", "application/json")
+		if err != nil {
+			return "", err
+		}
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
