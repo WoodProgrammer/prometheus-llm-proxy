@@ -1,4 +1,4 @@
-name: Release Postgresql Connection Manager
+name: Prometheus LLM Proxy Builder
 
 on:
   push:

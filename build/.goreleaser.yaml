@@ -1,6 +1,6 @@
 builds:
   - main: ./
-    binary: ./bin/postgresql-connection-manager
+    binary: ./bin/prometheus-llm-proxy
     flags:
       - -trimpath
     env:
