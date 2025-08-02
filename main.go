@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"time"
 
 	cmd "github.com/WoodProgrammer/prometheus-llm-proxy/cmd"
 	db "github.com/WoodProgrammer/prometheus-llm-proxy/db"
@@ -26,6 +27,9 @@ func NewProxyHandler() *cmd.ProxyHandler {
 		LLMEndpoint: llmEndpoint,
 		DBHandler: db.QueryValidationHandler{
 			QueryValidationMap: _query_map,
+		},
+		Requester: cmd.RequestHandler{
+			LastPrometheusCall: time.Now(),
 		},
 	}
 }
