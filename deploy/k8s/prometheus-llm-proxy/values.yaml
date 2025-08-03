@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: emirozbir/prometheus-llm-proxy
   pullPolicy: IfNotPresent
-  tag: "v0.0.2"
+  tag: "v0.0.3"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -25,7 +25,7 @@ service:
 
 secrets:
   open_ai_key: ""
-  prometheus_address: "http://localhost:9090"
+  prometheus_address: "http://prometheus.monitoring:9090"
   llm_endpoint: "http://localhost:11434/api/generate"
 
 ingress:

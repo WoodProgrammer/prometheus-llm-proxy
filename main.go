@@ -33,6 +33,7 @@ func NewProxyHandler() *cmd.ProxyHandler {
 		},
 	}
 }
+
 func main() {
 
 	proxy := NewProxyHandler()
@@ -40,7 +41,8 @@ func main() {
 	http.HandleFunc("/api/v1/label/__name__/values", proxy.PrometheusProxyHandler)
 	http.HandleFunc("/api/v1/labels", proxy.PrometheusProxyHandler)
 	http.HandleFunc("/api/v1/label/que/values", proxy.PrometheusProxyHandler)
-
+	http.HandleFunc("/api/v1/status/buildinfo", proxy.PrometheusProxyHandler)
+	http.HandleFunc("/api/v1/query", proxy.PrometheusProxyHandler)
 	http.HandleFunc("/api/v1/validate_query", proxy.ValidateQuery)
 	http.HandleFunc("/api/v1/get_all_queries", proxy.GetAllQueries)
 
