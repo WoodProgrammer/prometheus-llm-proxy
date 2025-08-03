@@ -29,7 +29,7 @@ Then you can jump into the Explore section and try to discover exact query what 
 
 ## Usage & Installation
 
-## Helm based installation
+## Helm
 
 This project have very simple helm chart. It basically use couple of fundamental environment variables like this;
 
