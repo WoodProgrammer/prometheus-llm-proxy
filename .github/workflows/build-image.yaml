@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "*"
+    branches:
+      - "FEAT-2_k8s_deploy"
 
 jobs:
   build-and-push-main-image:
@@ -32,7 +34,7 @@ jobs:
           file: Dockerfile
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/prometheus-llm-proxy:${{ steps.vars.outputs.TAG }}
+          tags: emirozbir/prometheus-llm-proxy:v0.0.2-rc-tag
 
 
 
