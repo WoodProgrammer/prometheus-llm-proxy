@@ -32,4 +32,12 @@ jobs:
           file: Dockerfile
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/prometheus-llm-proxy:{{steps.vars.outputs.TAG}}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/prometheus-llm-proxy:${{ steps.vars.outputs.TAG }}
+
+
+
+
+
+
+
+
