@@ -1,5 +1,5 @@
 # prometheus-llm-proxy
-**Prometheus-LLM-Proxy ** is a proxy on top of the Prometheus data sources in Grafana side.
+**Prometheus-LLM-Proxy** is a proxy on top of the Prometheus data sources in Grafana side.
 
 It basically fetch your query requirements then let you discover the exact query by the iterations.
 Prometheus proxy that enables SREs and engineers to search and explore metrics using natural language instead of manually writing PromQL queries.
