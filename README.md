@@ -11,6 +11,9 @@ Prometheus proxy that enables SREs and engineers to search and explore metrics u
 - **Prometheus Integration** – Full compatibility with `/api/v1/query` and `/api/v1/query_range` endpoints.
 - **Human-in-the-Loop** – Query approval flow ensures correctness before caching.
 
+Here is the sample diagram for end user
+
+<img src="./media/diagram.png"></img>
 
 ## Integration and Usage 
 
