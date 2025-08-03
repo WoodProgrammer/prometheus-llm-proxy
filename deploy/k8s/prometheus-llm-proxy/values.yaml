@@ -1,0 +1,64 @@
+replicaCount: 1
+
+image:
+  repository: emirozbir/prometheus-llm-proxy
+  pullPolicy: IfNotPresent
+  tag: "v0.0.2"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+service:
+  type: ClusterIP
+  port: 8000
+
+secrets:
+  open_ai_key: ""
+  prometheus_address: "http://localhost:9090"
+  llm_endpoint: "http://localhost:11434/api/generate"
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+resources: {}
+
+livenessProbe:
+  tcpSocket:
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+readinessProbe:
+  tcpSocket:
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+      
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+volumes: []
+volumeMounts: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
