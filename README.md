@@ -92,7 +92,7 @@ curl -XGET localhost:8000/api/v1/get_all_queries -d '{"hash":"658843486", "statu
 ### Notice 
 The hashes generating by the prompt of the users. This approach allows us to manage all the prompt by the hash. If a query validate by a user the proxy stop to ask the prompt to LLM provider.
 
-# FUTURE Improvements
+# FUTURE Improvements
 
 * Fix the minor bugs in Grafana integration
 * Persistency solution for hash maps
