@@ -75,6 +75,7 @@ func (p *ProxyHandler) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+
 	queryParams := parsedURL.Query()
 	query := ParseQuery(queryParams.Get("query"))
 

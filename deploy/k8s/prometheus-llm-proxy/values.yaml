@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: emirozbir/prometheus-llm-proxy
   pullPolicy: IfNotPresent
-  tag: "v0.0.6"
+  tag: "v0.0.7"
 
 imagePullSecrets: []
 nameOverride: ""

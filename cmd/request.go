@@ -75,7 +75,6 @@ func (p *RequestHandler) LLMConverter(naturalQuery string, llmEndpoint string) (
 	var llmResponse string
 	var openAIAPIModel string
 	client := &http.Client{Timeout: 10 * time.Second}
-
 	prompt := fmt.Sprintf(`
 Generate a single valid PromQL expression from the request below:
 Just return the query, no markdown, no quotes, no explanation
