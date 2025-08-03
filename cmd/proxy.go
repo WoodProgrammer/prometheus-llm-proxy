@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"time"
 
 	"github.com/WoodProgrammer/prometheus-llm-proxy/db"
 	"github.com/rs/zerolog/log"
@@ -82,13 +81,6 @@ func (p *ProxyHandler) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 	_hash := db.GenerateHash(query)
 	val, ok := p.DBHandler.QueryValidationMap[_hash]
 	if !ok || !val.Status {
-
-		if time.Since(p.Requester.LastPrometheusCall) >= 1*time.Minute || len(p.Requester.PrometheusAvailableMetrics.Data) == 0 {
-			log.Info().Msgf("Cagir abi %s", p.Requester.LastPrometheusCall)
-			p.Requester.FetchAvailableMetrics(p.PromBaseUrl)
-		} else {
-			log.Info().Msgf("The recent prometheus call has been in %s", p.Requester.LastPrometheusCall)
-		}
 
 		queryForPrometheus, err = p.Requester.LLMConverter(query, p.LLMEndpoint)
 		if err != nil {
