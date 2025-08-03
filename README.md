@@ -17,18 +17,19 @@ Here is the sample diagram for end user
 
 ## Integration and Usage 
 
-## Integration with Grafana
+## Integration with Grafana
 
 Basically you can add `prometheus-llm-proxy` as a Prometheus data source in Grafana like this;
+
 <img src="./media/grafana.png"></img>
 
 Then you can jump into the Explore section and try to discover exact query what you need.
 
 <img src="./media/explore.png"></img>
 
-## Usage & Installation
+## Usage & Installation
 
-## Helm based installation
+## Helm based installation
 
 This project have very simple helm chart. It basically use couple of fundamental environment variables like this;
 
@@ -59,12 +60,13 @@ $ popd
 * Query Validation – The generated PromQL is parsed, linted, and checked for performance constraints.
 
 ## Execution –
+
 If the query has been approved before, it is fetched from the memory store and executed directly.
 Otherwise, it is sent to Prometheus for results.
 Approval & Caching – Once approved by the user, the query is stored in memory for future reuse.
 
 
-# API
+# API
 
 This proxy provide you to manage and filter your queries by the API to prevent waste the LLM resources. Here is the sample usage like this;
 
