@@ -13,7 +13,7 @@ Prometheus proxy that enables SREs and engineers to search and explore metrics u
 
 Here is the sample diagram for end user
 
-<img width="400px" height="220px" src="./media/diagram.png"></img>
+<img width="700px" height="420px" src="./media/diagram.png"></img>
 
 ## Integration and Usage 
 
