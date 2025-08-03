@@ -1,9 +1,9 @@
 replicaCount: 1
 
 image:
-  repository: nginx
+  repository: emirozbir/prometheus-llm-proxy
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: "v0.0.2"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -26,6 +26,11 @@ securityContext: {}
 service:
   type: ClusterIP
   port: 80
+
+secrets:
+  open_ai_key: ""
+  prometheus_address: "http://localhost:9090"
+  llm_endpoint: "http://localhost:11434/api/generate"
 
 ingress:
   enabled: false
