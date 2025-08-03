@@ -16,16 +16,12 @@ serviceAccount:
   name: ""
 
 podAnnotations: {}
-
 podLabels: {}
-
 podSecurityContext: {}
-
 securityContext: {}
-
 service:
   type: ClusterIP
-  port: 80
+  port: 8000
 
 secrets:
   open_ai_key: ""
@@ -42,19 +38,19 @@ ingress:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-
-
 resources: {}
 
 livenessProbe:
-  httpGet:
-    path: /
-    port: http
+  tcpSocket:
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 10
 readinessProbe:
-  httpGet:
-    path: /
-    port: http
-
+  tcpSocket:
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+      
 autoscaling:
   enabled: false
   minReplicas: 1
@@ -62,12 +58,7 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
 
 volumes: []
-
-
 volumeMounts: []
-
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
