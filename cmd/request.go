@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -16,11 +15,7 @@ import (
 )
 
 func (p *RequestHandler) FetchMetrics(url string) ([]byte, error) {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	resp, err := client.Get(url)
+	resp, err := p.HTTPClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -39,15 +34,14 @@ func (p *RequestHandler) FetchAvailableMetrics(prometheusAddress string) ([]stri
 	if err != nil {
 		return nil, err
 	}
-	client := &http.Client{Timeout: 10 * time.Second}
 	req.Header.Set("Accept", "application/json")
-	resp, err := client.Do(req)
+	resp, err := p.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	// 304 => değişiklik yok
+	// 304 => no changes
 	if resp.StatusCode == http.StatusNotModified {
 		return nil, err
 	}
@@ -69,12 +63,33 @@ func (p *RequestHandler) FetchAvailableMetrics(prometheusAddress string) ([]stri
 	return payload.Data, nil
 }
 
+func (p *RequestHandler) FetchAvailableMetricsCached(prometheusAddress string) ([]string, error) {
+	p.mu.Lock()
+	if p.metricsCacheAt.After(time.Now().Add(-p.AvailableMetricsCacheTTL)) {
+		metrics := p.metricsCache
+		p.mu.Unlock()
+		return metrics, nil
+	}
+	p.mu.Unlock()
+
+	metrics, err := p.FetchAvailableMetrics(prometheusAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	p.mu.Lock()
+	p.metricsCache = metrics
+	p.metricsCacheAt = time.Now()
+	p.mu.Unlock()
+
+	return metrics, nil
+}
+
 func (p *RequestHandler) LLMConverter(naturalQuery string, llmEndpoint string) (string, error) {
 	var req *http.Request
 	var isOpenAI bool
 	var llmResponse string
 	var openAIAPIModel string
-	client := &http.Client{Timeout: 10 * time.Second}
 	prompt := fmt.Sprintf(`
 Generate a single valid PromQL expression from the request below:
 Just return the query, no markdown, no quotes, no explanation
@@ -120,13 +135,13 @@ Rules:
 		}
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := client.Do(req)
+		resp, err := p.HTTPClient.Do(req)
 		if err != nil {
 			return "", err
 		}
 		defer resp.Body.Close()
 
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return "", err
 		}
@@ -148,26 +163,26 @@ Rules:
 		}
 
 		req, err = http.NewRequest("POST", llmEndpoint, bytes.NewBuffer(payloadBytes))
-		req.Header.Set("Authorization", "Bearer "+openAIAPIKey)
-		req.Header.Set("Content-Type", "application/json")
 		if err != nil {
 			return "", err
 		}
+		req.Header.Set("Authorization", "Bearer "+openAIAPIKey)
+		req.Header.Set("Content-Type", "application/json")
 
-		res, err := client.Do(req)
+		res, err := p.HTTPClient.Do(req)
 		if err != nil {
-			panic(err)
+			return "", fmt.Errorf("LLM API call failed: %w", err)
 		}
 		defer res.Body.Close()
 
 		if res.StatusCode >= 300 {
 			blob, _ := io.ReadAll(res.Body)
-			panic(fmt.Errorf("API hata: %s\n%s", res.Status, string(blob)))
+			return "", fmt.Errorf("LLM API error: %s\n%s", res.Status, string(blob))
 		}
 
 		var r Response
 		if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
-			panic(fmt.Errorf("JSON decode hata: %w", err))
+			return "", fmt.Errorf("LLM JSON decode error: %w", err)
 		}
 		var out string
 		for _, o := range r.Output {

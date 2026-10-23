@@ -1,11 +1,11 @@
-package db
+package cmd
 
 import (
 	"fmt"
 	"hash/fnv"
+	"sync"
 )
 
-// keep it as a map struct
 type QueryValidation struct {
 	Prompt string `json:"prompt"`
 	Output string `json:"output"`
@@ -19,16 +19,14 @@ func GenerateHash(s string) string {
 	return str_hash
 }
 
-type QueryValidationInterface interface {
-	ValidateQuery(status bool, hash string)
-	GetAllQueries() map[string]QueryValidation
-}
-
 type QueryValidationHandler struct {
+	mu                 sync.RWMutex
 	QueryValidationMap map[string]QueryValidation
 }
 
 func (q *QueryValidationHandler) ValidateQuery(status bool, hash string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	v, ok := q.QueryValidationMap[hash]
 	if !ok {
 		v = QueryValidation{}
@@ -37,6 +35,8 @@ func (q *QueryValidationHandler) ValidateQuery(status bool, hash string) {
 }
 
 func (q *QueryValidationHandler) SetQueries(prompt, output, hash string, status bool) QueryValidation {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	query := QueryValidation{
 		Prompt: prompt,
 		Output: output,
@@ -47,6 +47,15 @@ func (q *QueryValidationHandler) SetQueries(prompt, output, hash string, status 
 	return query
 }
 
+func (q *QueryValidationHandler) GetQuery(hash string) (QueryValidation, bool) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	v, ok := q.QueryValidationMap[hash]
+	return v, ok
+}
+
 func (q *QueryValidationHandler) GetAllQueries() map[string]QueryValidation {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	return q.QueryValidationMap
 }

@@ -1,4 +1,4 @@
-FROM golang:1.24.5-bookworm@sha256:ef8c5c733079ac219c77edab604c425d748c740d8699530ea6aced9de79aea40
+FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5
 RUN apt-get update && \
     apt-get install -y ca-certificates && \
     update-ca-certificates
@@ -6,10 +6,10 @@ RUN apt-get update && \
 WORKDIR /opt/prometheus-llm-proxy
 
 COPY . .
-RUN go mod tidy
+RUN go mod download
 RUN go build .
 
-FROM debian:bookworm-20250721-slim@sha256:2424c1850714a4d94666ec928e24d86de958646737b1d113f5b2207be44d37d8
+FROM debian:bookworm-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8
 RUN apt-get update && \
     apt-get install -y ca-certificates && \
     update-ca-certificates

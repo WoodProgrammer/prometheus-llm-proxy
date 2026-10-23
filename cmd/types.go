@@ -1,6 +1,10 @@
 package cmd
 
-import "time"
+import (
+	"net/http"
+	"sync"
+	"time"
+)
 
 var response struct {
 	Response string `json:"response"`
@@ -12,8 +16,14 @@ type Request interface {
 }
 
 type RequestHandler struct {
+	HTTPClient                *http.Client
 	PrometheusAvailableMetrics PrometheusAvailableMetricReponse
+	AvailableMetricsCacheTTL  time.Duration
 	LastPrometheusCall         time.Time
+
+	mu sync.Mutex
+	metricsCache    []string
+	metricsCacheAt  time.Time
 }
 
 type QueryValidationRequest struct {
