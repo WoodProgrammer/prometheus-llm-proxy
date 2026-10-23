@@ -2,6 +2,8 @@ module prometheus-llm-proxy
 
 go 1.24.4
 
+toolchain go1.27.3
+
 replace github.com/WoodProgrammer/prometheus-llm-proxy/cmd => ./cmd
 
 replace github.com/WoodProgrammer/prometheus-llm-proxy/db => ./db
